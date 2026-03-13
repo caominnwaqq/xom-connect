@@ -1,5 +1,7 @@
-import { Newspaper } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Newspaper } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import NearbyPostsExplorer from "@/src/components/posts/NearbyPostsExplorer";
 
 export default function FeedPage() {
@@ -16,6 +18,12 @@ export default function FeedPage() {
             <p className="mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
               Đây là danh sách đọc trực tiếp từ Supabase. Khi bạn bắt đầu tạo bài đăng, feed này sẽ trở thành luồng chính của app.
             </p>
+            <Button asChild className="mt-4 rounded-2xl" size="sm">
+              <Link href="/post">
+                Tạo bài đăng mới
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
           </div>
           <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-700">
             <Newspaper className="size-7" />

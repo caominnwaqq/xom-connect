@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-    CirclePlus,
-    MapPinned,
     Newspaper,
     type LucideIcon,
     UserRound,
@@ -14,9 +12,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-    { href: "/", label: "Map", icon: MapPinned },
     { href: "/feed", label: "Feed", icon: Newspaper },
-    { href: "/post", label: "Add", icon: CirclePlus },
     { href: "/profile", label: "Profile", icon: UserRound },
 ] satisfies Array<{
     href: string;
@@ -41,7 +37,7 @@ export default function BottomNav() {
                 aria-label="Bottom navigation"
                 className="pointer-events-auto w-full max-w-md rounded-[1.75rem] border border-border/70 bg-background/95 p-2 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.35)] backdrop-blur"
             >
-                <ul className="grid grid-cols-4 gap-1">
+                <ul className="grid grid-cols-2 gap-1">
                     {navItems.map(({ href, label, icon: Icon }) => {
                         const active = isActivePath(pathname, href);
 

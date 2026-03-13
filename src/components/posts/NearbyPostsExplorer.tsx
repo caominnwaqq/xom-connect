@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { LoaderCircle, MapPinned, Radar, TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -15,9 +17,10 @@ import {
     isSchemaMissing,
     isSupabaseConfigMissing,
 } from "@/lib/posts";
+import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { useNearbyPosts } from "@/src/hooks/useNearbyPosts";
-import { useState } from "react";
+import PostActions from "@/src/components/posts/PostActions";
 
 const NearbyPostsMap = dynamic(() => import("@/src/components/map/NearbyPostsMap"), {
     ssr: false,
@@ -42,11 +45,42 @@ export default function NearbyPostsExplorer({
     description,
 }: NearbyPostsExplorerProps) {
     const [radiusMeters, setRadiusMeters] = useState(1000);
+    const [session, setSession] = useState<Session | null>(null);
     const { posts, error, loading, location, locationError } = useNearbyPosts(radiusMeters);
     const schemaMissing = isSchemaMissing(error);
     const configMissing = isSupabaseConfigMissing(error);
     const setupHelpText = getSetupHelpText(error);
     const canRenderMap = Boolean(showMap && location && posts.some(hasMapCoordinates));
+
+    useEffect(() => {
+        let active = true;
+
+        if (!supabase) {
+            return;
+        }
+
+        const loadSession = async () => {
+            const { data, error } = await supabase.auth.getSession();
+            if (active) {
+                setSession(data.session ?? null);
+            }
+        };
+
+        void loadSession();
+
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+            if (active) {
+                setSession(nextSession);
+            }
+        });
+
+        return () => {
+            active = false;
+            subscription.unsubscribe();
+        };
+    }, []);
 
     return (
         <section className="rounded-[2rem] border border-border/70 bg-background/90 p-6 shadow-sm backdrop-blur">
@@ -159,6 +193,14 @@ export default function NearbyPostsExplorer({
                             <p className="mt-4 text-xs text-muted-foreground">
                                 Tạo lúc {formatTimestamp(post.created_at)}
                             </p>
+
+                            {session?.user && post.user_id && (
+                                <PostActions
+                                    postId={post.id}
+                                    currentUserId={session.user.id}
+                                    postOwnerId={post.user_id}
+                                />
+                            )}
                         </article>
                     ))
                 ) : !loading ? (
