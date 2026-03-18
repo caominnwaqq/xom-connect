@@ -41,7 +41,6 @@ create table if not exists public.users (
     phone text unique,
     avatar_url text,
     location geography(Point, 4326),
-    karma_score integer not null default 0,
     created_at timestamptz not null default timezone('utc', now()),
     updated_at timestamptz not null default timezone('utc', now())
 );
@@ -82,11 +81,21 @@ create table if not exists public.messages (
     constraint messages_content_not_blank check (char_length(trim(content)) > 0)
 );
 
+create table if not exists public.comments (
+    id uuid primary key default gen_random_uuid(),
+    post_id uuid not null references public.posts (id) on delete cascade,
+    user_id uuid not null references public.users (id) on delete cascade,
+    content text not null,
+    created_at timestamptz not null default timezone('utc', now()),
+    updated_at timestamptz not null default timezone('utc', now()),
+    constraint comments_content_not_blank check (char_length(trim(content)) > 0)
+);
+
 alter table public.users add column if not exists display_name text;
 alter table public.users add column if not exists phone text;
 alter table public.users add column if not exists avatar_url text;
 alter table public.users add column if not exists location geography(Point, 4326);
-alter table public.users add column if not exists karma_score integer not null default 0;
+alter table public.users drop column if exists karma_score;
 alter table public.users add column if not exists created_at timestamptz not null default timezone('utc', now());
 alter table public.users add column if not exists updated_at timestamptz not null default timezone('utc', now());
 
@@ -240,6 +249,41 @@ begin
 end
 $$;
 
+do $$
+begin
+        -- Repair legacy fallback columns if an older migration left them with NOT NULL.
+        if exists (
+                select 1
+                from information_schema.columns
+                where table_schema = 'public'
+                    and table_name = 'posts'
+                    and column_name = 'type_legacy_text'
+        ) then
+                alter table public.posts alter column type_legacy_text drop not null;
+
+                update public.posts
+                set type_legacy_text = coalesce(type_legacy_text, "type"::text)
+                where type_legacy_text is null
+                    and "type" is not null;
+        end if;
+
+        if exists (
+                select 1
+                from information_schema.columns
+                where table_schema = 'public'
+                    and table_name = 'posts'
+                    and column_name = 'status_legacy_text'
+        ) then
+                alter table public.posts alter column status_legacy_text drop not null;
+
+                update public.posts
+                set status_legacy_text = coalesce(status_legacy_text, status::text)
+                where status_legacy_text is null
+                    and status is not null;
+        end if;
+end
+$$;
+
 alter table public.chats add column if not exists post_id uuid references public.posts (id) on delete cascade;
 alter table public.chats add column if not exists requester_id uuid references public.users (id) on delete cascade;
 alter table public.chats add column if not exists owner_id uuid references public.users (id) on delete cascade;
@@ -250,12 +294,19 @@ alter table public.messages add column if not exists sender_id uuid references p
 alter table public.messages add column if not exists content text;
 alter table public.messages add column if not exists created_at timestamptz not null default timezone('utc', now());
 
+alter table public.comments add column if not exists post_id uuid references public.posts (id) on delete cascade;
+alter table public.comments add column if not exists user_id uuid references public.users (id) on delete cascade;
+alter table public.comments add column if not exists content text;
+alter table public.comments add column if not exists created_at timestamptz not null default timezone('utc', now());
+alter table public.comments add column if not exists updated_at timestamptz not null default timezone('utc', now());
+
 create index if not exists users_location_gix on public.users using gist (location);
 create index if not exists posts_location_gix on public.posts using gist (location);
 create index if not exists posts_user_status_created_idx on public.posts (user_id, status, created_at desc);
 create index if not exists chats_owner_idx on public.chats (owner_id, created_at desc);
 create index if not exists chats_requester_idx on public.chats (requester_id, created_at desc);
 create index if not exists messages_chat_created_idx on public.messages (chat_id, created_at desc);
+create index if not exists comments_post_created_idx on public.comments (post_id, created_at asc);
 
 drop trigger if exists users_set_updated_at on public.users;
 create trigger users_set_updated_at
@@ -266,6 +317,12 @@ execute function public.set_updated_at();
 drop trigger if exists posts_set_updated_at on public.posts;
 create trigger posts_set_updated_at
 before update on public.posts
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists comments_set_updated_at on public.comments;
+create trigger comments_set_updated_at
+before update on public.comments
 for each row
 execute function public.set_updated_at();
 
@@ -298,12 +355,14 @@ alter table public.users enable row level security;
 alter table public.posts enable row level security;
 alter table public.chats enable row level security;
 alter table public.messages enable row level security;
+alter table public.comments enable row level security;
 
 drop policy if exists "Users are viewable by authenticated members" on public.users;
-create policy "Users are viewable by authenticated members"
+drop policy if exists "Users are viewable by feed visitors" on public.users;
+create policy "Users are viewable by feed visitors"
 on public.users
 for select
-to authenticated
+to anon, authenticated
 using (true);
 
 drop policy if exists "Users can insert their own profile" on public.users;
@@ -346,6 +405,42 @@ with check (auth.uid() = user_id);
 drop policy if exists "Users can delete their own posts" on public.posts;
 create policy "Users can delete their own posts"
 on public.posts
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "Comments are public for active posts" on public.comments;
+create policy "Comments are public for active posts"
+on public.comments
+for select
+to anon, authenticated
+using (
+    exists (
+        select 1
+        from public.posts
+        where posts.id = comments.post_id
+          and (posts.status = 'active' or auth.uid() = posts.user_id)
+    )
+);
+
+drop policy if exists "Users can create comments as themselves" on public.comments;
+create policy "Users can create comments as themselves"
+on public.comments
+for insert
+to authenticated
+with check (
+    auth.uid() = user_id
+    and exists (
+        select 1
+        from public.posts
+        where posts.id = comments.post_id
+          and posts.status = 'active'
+    )
+);
+
+drop policy if exists "Users can delete their own comments" on public.comments;
+create policy "Users can delete their own comments"
+on public.comments
 for delete
 to authenticated
 using (auth.uid() = user_id);

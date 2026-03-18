@@ -9,6 +9,21 @@ export type PostPreview = {
   created_at: string;
 };
 
+export type GlobalPost = {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  description: string;
+  image_url: string | null;
+  status: string;
+  created_at: string;
+  users: {
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+};
+
 export type NearbyPost = {
   id: string;
   user_id: string;
@@ -21,6 +36,10 @@ export type NearbyPost = {
   latitude?: number | null;
   longitude?: number | null;
   distance_meters: number;
+  users?: {
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
 };
 
 export type Coordinates = {
@@ -98,4 +117,17 @@ export function formatDistance(distanceMeters: number) {
 
 export function hasMapCoordinates(post: NearbyPost) {
   return typeof post.latitude === "number" && typeof post.longitude === "number";
+}
+
+export function formatRelativeTime(value: string): string {
+  const diffMs = Date.now() - new Date(value).getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return "Vừa xong";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} giờ trước`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay} ngày trước`;
+  return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(new Date(value));
 }

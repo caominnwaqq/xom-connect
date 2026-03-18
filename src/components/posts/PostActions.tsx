@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Edit2, Trash2, XCircle, CheckCircle } from "lucide-react";
 import { deletePost } from "@/lib/supabase/posts";
 import { cn } from "@/lib/utils";
+import { isUuid } from "@/lib/validation";
 
 type PostActionsProps = {
     postId: string;
@@ -32,10 +33,16 @@ export default function PostActions({
     }
 
     const handleDeleteClick = () => {
+        setDeleteError(null);
         setShowDeleteConfirm(true);
     };
 
     const handleConfirmDelete = async () => {
+        if (!isUuid(postId)) {
+            setDeleteError("ID bài đăng không hợp lệ.");
+            return;
+        }
+
         setIsDeleting(true);
         setDeleteError(null);
 
@@ -57,6 +64,11 @@ export default function PostActions({
     };
 
     const handleEditClick = () => {
+        if (!isUuid(postId)) {
+            setDeleteError("ID bài đăng không hợp lệ.");
+            return;
+        }
+
         router.push(`/post/${postId}/edit`);
     };
 
@@ -102,21 +114,24 @@ export default function PostActions({
     }
 
     return (
-        <div className="mt-3 flex gap-2">
-            <button
-                onClick={handleEditClick}
-                className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
-            >
-                <Edit2 className="size-3.5" />
-                Chỉnh sửa
-            </button>
-            <button
-                onClick={handleDeleteClick}
-                className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-            >
-                <Trash2 className="size-3.5" />
-                Xóa
-            </button>
+        <div className="mt-3 space-y-1.5">
+            <div className="flex gap-2">
+                <button
+                    onClick={handleEditClick}
+                    className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+                >
+                    <Edit2 className="size-3.5" />
+                    Chỉnh sửa
+                </button>
+                <button
+                    onClick={handleDeleteClick}
+                    className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                >
+                    <Trash2 className="size-3.5" />
+                    Xóa
+                </button>
+            </div>
+            {deleteError ? <p className="text-xs text-destructive/80">{deleteError}</p> : null}
         </div>
     );
 }

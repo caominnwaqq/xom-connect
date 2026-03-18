@@ -4,7 +4,7 @@
 - **Tên dự án (dự kiến):** Xóm (Local Connect)
 - **Mục tiêu:** Xây dựng một Progressive Web App (PWA) giúp kết nối cư dân trong bán kính hẹp (hyper-local) để mượn/cho đồ, báo cáo khẩn cấp (SOS) và giao lưu cộng đồng.
 - **Nền tảng:** Web App (Mobile-first UI), có thể cài đặt (PWA).
-- **Core Action:** Xác thực vị trí -> Đăng tin mượn/cho -> Nhắn tin real-time -> Hoàn thành & Đánh giá (Karma).
+- **Core Action:** Xác thực vị trí -> Đăng tin mượn/cho -> Nhắn tin real-time -> Hoàn thành giao dịch.
 
 ## 2. Tech Stack (Yêu cầu Copilot sử dụng)
 - **Framework:** Next.js 14+ (App Router).
@@ -25,7 +25,6 @@ Yêu cầu Copilot tạo các bảng sau bằng SQL snippet:
 - `phone` (text, unique)
 - `avatar_url` (text)
 - `location` (geography(POINT, 4326)) - Lưu tọa độ nhà.
-- `karma_score` (int, default 0)
 - `created_at` (timestamp)
 
 ### Bảng `posts` (Tin đăng)
@@ -101,6 +100,5 @@ Khi chat với Copilot, hãy yêu cầu thực hiện từng Phase một để t
 - Tạo phòng chat giữa người đăng và người yêu cầu.
 - Lắng nghe insert vào bảng `messages` để render tin nhắn real-time không cần reload trang.
 
-### Phase 6: Hoàn thiện & Đánh giá (Karma)
+### Phase 6: Hoàn thiện giao dịch
 - Nút "Hoàn thành giao dịch" để đổi status bài đăng.
-- Viết function cộng/trừ `karma_score` cho user sau khi giao dịch kết thúc.

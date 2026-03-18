@@ -59,8 +59,10 @@ export default function NearbyPostsExplorer({
             return;
         }
 
+        const client = supabase;
+
         const loadSession = async () => {
-            const { data, error } = await supabase.auth.getSession();
+            const { data } = await client.auth.getSession();
             if (active) {
                 setSession(data.session ?? null);
             }
@@ -70,7 +72,7 @@ export default function NearbyPostsExplorer({
 
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+        } = client.auth.onAuthStateChange((_event, nextSession) => {
             if (active) {
                 setSession(nextSession);
             }

@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { supabase } from "@/lib/supabase/client";
 import { type PostPreview } from "@/lib/posts";
 import { supabaseConfig } from "@/lib/supabase/config";
+import { isUuid } from "@/lib/validation";
 
 export async function getLatestPosts(limit = 3) {
   try {
@@ -51,6 +52,28 @@ export async function updatePost(
   }
 ) {
   try {
+    const safePostId = postId.trim();
+    if (!isUuid(safePostId)) {
+      return {
+        success: false,
+        error: "ID bài đăng không hợp lệ.",
+      };
+    }
+
+    const normalizedTitle =
+      typeof updates.title === "string" ? updates.title.trim() : updates.title;
+    const normalizedDescription =
+      typeof updates.description === "string"
+        ? updates.description.trim()
+        : updates.description;
+
+    if (normalizedTitle === "" || normalizedDescription === "") {
+      return {
+        success: false,
+        error: "Tiêu đề và nội dung không được để trống.",
+      };
+    }
+
     if (!supabase) {
       return {
         success: false,
@@ -58,10 +81,16 @@ export async function updatePost(
       };
     }
 
+    const normalizedUpdates = {
+      ...updates,
+      title: normalizedTitle,
+      description: normalizedDescription,
+    };
+
     const { error } = await supabase
       .from("posts")
-      .update(updates)
-      .eq("id", postId);
+      .update(normalizedUpdates)
+      .eq("id", safePostId);
 
     if (error) {
       return {
@@ -88,6 +117,14 @@ export async function updatePost(
  */
 export async function deletePost(postId: string) {
   try {
+    const safePostId = postId.trim();
+    if (!isUuid(safePostId)) {
+      return {
+        success: false,
+        error: "ID bài đăng không hợp lệ.",
+      };
+    }
+
     if (!supabase) {
       return {
         success: false,
@@ -98,7 +135,7 @@ export async function deletePost(postId: string) {
     const { error } = await supabase
       .from("posts")
       .delete()
-      .eq("id", postId);
+      .eq("id", safePostId);
 
     if (error) {
       return {
