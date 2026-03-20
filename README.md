@@ -3,6 +3,8 @@ Connecting neighborhoods through hyper-local, real-time sharing.
 
 Xom Connect is a mobile-first social platform designed to bring neighbors together. Whether you're looking to borrow a ladder, give away extra fruit from your garden, or need urgent SOS assistance, Xom Connect prioritizes what is happening near you over global noise.
 
+![Spelling](https://github.com/caominnwaqq/xom-connect/actions/workflows/spelling.yml/badge.svg)
+
 ## 🌟 Highlights
 
   * 📍 **Distance-Aware Discovery:** See posts based on your actual proximity (500m to 2km) using PostGIS technology.
@@ -71,4 +73,3 @@ We are actively building the future of local connection.
 
 We love hearing from the community\! If you have ideas for new features or find a bug, please [open an issue](https://github.com/caominnwaqq/xom-connect/issues) or join our [Discussions](https://github.com/caominnwaqq/xom-connect/discussions).
 
-![Spelling](https://github.com/caominnwaqq/xom-connect/actions/workflows/spelling.yml/badge.svg)
