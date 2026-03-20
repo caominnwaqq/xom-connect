@@ -3,6 +3,31 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getClientIp } from "@/lib/auth/getClientIp";
 import { checkRateLimit } from "@/lib/auth/rateLimit";
 
+function formatLoginError(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("invalid login credentials")) {
+    return {
+      error: "Email hoặc mật khẩu không đúng.",
+      code: "INVALID_CREDENTIALS",
+      hint: "Nếu bạn vừa đăng ký, hãy kiểm tra email để xác thực tài khoản trước khi đăng nhập.",
+    };
+  }
+
+  if (normalized.includes("email not confirmed")) {
+    return {
+      error: "Email của bạn chưa được xác thực.",
+      code: "EMAIL_NOT_CONFIRMED",
+      hint: "Hãy mở email xác thực Supabase và thử đăng nhập lại sau khi xác nhận.",
+    };
+  }
+
+  return {
+    error: message,
+    code: "AUTH_LOGIN_ERROR",
+  };
+}
+
 export async function POST(request: NextRequest) {
   const supabase = createServerSupabaseClient();
   if (!supabase) {
@@ -33,7 +58,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 401 });
+    return NextResponse.json(formatLoginError(error.message), { status: 401 });
   }
 
   return NextResponse.json(

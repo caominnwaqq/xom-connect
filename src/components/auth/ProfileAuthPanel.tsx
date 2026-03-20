@@ -32,7 +32,7 @@ type ProfileSignedInPanelProps = {
 };
 
 type AuthApiResponse =
-  | { error: string; resetAt?: number }
+  | { error: string; code?: string; hint?: string; resetAt?: number }
   | {
     user: { id: string; email: string | null } | null;
     session: Session | null;
@@ -41,6 +41,56 @@ type AuthApiResponse =
 const pendingEmailChangeStorageKey = "xom-connect:pending-email-change";
 const emailChangeRateLimitUntilStorageKey = "xom-connect:email-change-rate-limit-until";
 const defaultEmailChangeCooldownMs = 60 * 1000;
+
+function formatRemainingDurationFromResetAt(resetAt?: number) {
+  if (!resetAt || !Number.isFinite(resetAt) || resetAt <= Date.now()) {
+    return null;
+  }
+
+  const secondsLeft = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
+
+  if (secondsLeft < 60) {
+    return `${secondsLeft} giây`;
+  }
+
+  return `${Math.ceil(secondsLeft / 60)} phút`;
+}
+
+function mapAuthErrorMessage(message: string, options?: { hint?: string; resetAt?: number }) {
+  const normalized = message.toLowerCase();
+  const hint = options?.hint;
+  const remainingDuration = formatRemainingDurationFromResetAt(options?.resetAt);
+
+  if (normalized.includes("invalid login credentials")) {
+    return "Email hoặc mật khẩu không đúng. Nếu bạn vừa đăng ký, hãy xác thực email trước khi đăng nhập.";
+  }
+
+  if (normalized.includes("email not confirmed")) {
+    return "Email của bạn chưa được xác thực. Hãy mở email xác thực rồi thử đăng nhập lại.";
+  }
+
+  if (
+    normalized.includes("email rate limit exceeded") ||
+    normalized.includes("over_email_send_rate_limit") ||
+    (normalized.includes("rate limit") && normalized.includes("email"))
+  ) {
+    return remainingDuration
+      ? `Bạn đã vượt giới hạn gửi email xác thực. Vui lòng thử lại sau ${remainingDuration}.`
+      : hint && hint.trim()
+        ? `Bạn đã vượt giới hạn gửi email xác thực. ${hint}`
+        : "Bạn đã vượt giới hạn gửi email xác thực. Vui lòng thử lại sau một lúc.";
+  }
+
+  if (normalized.includes("too many login attempts")) {
+    return "Bạn đã thử đăng nhập quá nhiều lần. Vui lòng đợi một lúc rồi thử lại.";
+  }
+
+  if (hint && hint.trim()) {
+    return `${message} ${hint}`;
+  }
+
+  return message;
+}
 
 function normalizeEmail(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
@@ -747,6 +797,8 @@ export default function ProfileAuthPanel() {
     resetFeedback();
     setSubmitting(true);
 
+    const normalizedEmail = email.trim();
+
     try {
       const client = supabase;
 
@@ -759,7 +811,7 @@ export default function ProfileAuthPanel() {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            email,
+            email: normalizedEmail,
             password,
             displayName: displayName.trim(),
           }),
@@ -767,7 +819,16 @@ export default function ProfileAuthPanel() {
 
         const payload = (await response.json().catch(() => null)) as AuthApiResponse | null;
         if (!response.ok || !payload || "error" in payload) {
-          throw new Error(payload && "error" in payload ? payload.error : "Không thể đăng ký lúc này.");
+          if (payload && "error" in payload) {
+            throw new Error(
+              mapAuthErrorMessage(payload.error, {
+                hint: payload.hint,
+                resetAt: payload.resetAt,
+              })
+            );
+          }
+
+          throw new Error("Không thể đăng ký lúc này.");
         }
 
         if (payload.session?.access_token && payload.session.refresh_token) {
@@ -781,18 +842,27 @@ export default function ProfileAuthPanel() {
         setMessage(
           payload.session
             ? "Tài khoản đã được tạo và đăng nhập ngay trên thiết bị này."
-            : "Đăng ký thành công."
+            : "Đăng ký thành công. Hãy kiểm tra email để xác thực tài khoản trước khi đăng nhập."
         );
       } else {
         const response = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email: normalizedEmail, password }),
         });
 
         const payload = (await response.json().catch(() => null)) as AuthApiResponse | null;
         if (!response.ok || !payload || "error" in payload) {
-          throw new Error(payload && "error" in payload ? payload.error : "Email hoặc mật khẩu không đúng.");
+          if (payload && "error" in payload) {
+            throw new Error(
+              mapAuthErrorMessage(payload.error, {
+                hint: payload.hint,
+                resetAt: payload.resetAt,
+              })
+            );
+          }
+
+          throw new Error("Email hoặc mật khẩu không đúng.");
         }
 
         if (payload.session?.access_token && payload.session.refresh_token) {
@@ -810,7 +880,7 @@ export default function ProfileAuthPanel() {
     } catch (authError) {
       setError(
         authError instanceof Error
-          ? authError.message
+          ? mapAuthErrorMessage(authError.message)
           : "Đã có lỗi xảy ra khi làm việc với Supabase Auth."
       );
     } finally {
