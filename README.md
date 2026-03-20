@@ -69,4 +69,4 @@ We are actively building the future of local connection.
 
 ## 💭 Feedback and Contributions
 
-We love hearing from the community\! If you have ideas for new features or find a bug, please [open an issue](https://github.com/caominnwaqq/xom-connect/issues) or join our [Discussions](https://github.com/caominnwaqq/xom-connect/discussions).
+We love hearing from the community\! If you have ideas for new features or find a bug, please [open an issue](https://github.com/caominnwaqq/xom-connect/issues) or join our [Discussions](https://github.com/caominnwaqq/xom-connect/discussions), Thanks Everyone !
