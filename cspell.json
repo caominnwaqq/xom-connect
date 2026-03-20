@@ -1,10 +1,20 @@
 {
     "version": "0.2",
     "language": "en",
-    "words": [],
+    "useGitignore": true,
+    "words": [
+        "Xom",
+        "Supabase",
+        "PostGIS",
+        "geolocation",
+        "geospatial",
+        "cspell"
+    ],
     "ignorePaths": [
         "node_modules",
         "dist",
-        "*.lock"
+        "*.lock",
+        ".next",
+        "coverage"
     ]
 }
