@@ -1,10 +1,7 @@
 {
     "version": "0.2",
     "language": "en",
-    "words": [
-        "myCustomWord",
-        "someLibraryName"
-    ],
+    "words": [],
     "ignorePaths": [
         "node_modules",
         "dist",
